@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kakuma Digital Business Management</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+:root{--bg:#f6f7f4;--card:#fff;--ink:#1c2724;--mute:#5b6b66;--line:#dfe4df;--green:#1f6f5c;--on:#fff;--sun:#f2b632;--red:#b83a26;--soft:#e6f0ec;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121917;--card:#1b2522;--ink:#eaf0ed;--mute:#9bb0a9;--line:#2c3a36;--green:#3fae95;--on:#08120f;--soft:#1f3029;--red:#ef7e69;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#121917;--card:#1b2522;--ink:#eaf0ed;--mute:#9bb0a9;--line:#2c3a36;--green:#3fae95;--on:#08120f;--soft:#1f3029;--red:#ef7e69;color-scheme:dark}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.45 "Atkinson Hyperlegible",system-ui,Arial,sans-serif}
+main{max-width:600px;margin:0 auto;padding:16px 16px 96px}
+h1{font-size:25px;margin:0}h2{font-size:20px;margin:20px 0 10px}p{margin:0 0 12px;color:var(--mute)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
+label{display:block;font-weight:700;margin:12px 0 4px}
+input,select{width:100%;font:inherit;padding:12px;border:2px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
+input:focus,select:focus,button:focus-visible{outline:3px solid var(--sun);outline-offset:1px}
+button{font:inherit;font-weight:700;border:0;border-radius:8px;padding:13px 16px;background:var(--green);color:var(--on);cursor:pointer}
+button.g{background:transparent;color:var(--green);border:2px solid var(--green)}
+button.s{padding:7px 11px;font-size:15px}.full{width:100%;margin-top:16px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{background:var(--soft);border-radius:12px;padding:12px}.stat b{display:block;font-size:22px}.stat span,.m{color:var(--mute);font-size:15px}
+.big{background:var(--green);color:var(--on);border-radius:12px;padding:16px;margin-bottom:12px}.big b{display:block;font-size:34px}
+.it{padding:11px 0;border-bottom:1px solid var(--line)}.it:last-child{border:0}.w{color:var(--red);font-weight:700}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+nav{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);display:flex;padding-bottom:env(safe-area-inset-bottom,0px);z-index:5}
+nav button{flex:1;background:none;color:var(--mute);border-radius:0;padding:12px 2px;font-size:13.5px}
+nav button[aria-current="true"]{color:var(--green);box-shadow:inset 0 3px 0 var(--sun)}
+.toast{position:fixed;left:16px;right:16px;bottom:84px;max-width:568px;margin:auto;background:var(--ink);color:var(--bg);padding:12px 16px;border-radius:10px;z-index:9}
+.mini{width:84px;padding:7px}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<script>
+function lj(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}
+function sj(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+var U=lj("kdbm_users",{}),cur=lj("kdbm_cur",null),D=null,tab="dash",sel=null,mode="in",tt;
+function $(i){return document.getElementById(i)}
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function kes(n){return "KSh "+Number(n||0).toLocaleString("en-KE")}
+function today(){return new Date().toISOString().slice(0,10)}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+function sum(a,f){return a.reduce(function(t,x){return t+f(x)},0)}
+function toast(m){clearTimeout(tt);var t=document.querySelector(".toast");if(t)t.remove();t=document.createElement("div");t.className="toast";t.setAttribute("role","status");t.textContent=m;document.body.appendChild(t);tt=setTimeout(function(){t.remove()},2800)}
+function save(){sj("kdbm_data_"+cur,D)}
+function openData(){D=lj("kdbm_data_"+cur,null)||{products:[],sales:[],expenses:[],customers:[]}}
+function prod(id){return D.products.filter(function(p){return p.id===id})[0]}
+function cust(id){return D.customers.filter(function(c){return c.id===id})[0]}
+
+function render(){
+  if(!cur||!U[cur])return auth();
+  if(!D)openData();
+  var v={dash:dash,sales:sales,inv:inv,exp:exps,cus:cus}[tab]();
+  var t=[["dash","Dashboard"],["sales","Sales"],["inv","Inventory"],["exp","Expenses"],["cus","Customers"]];
+  $("app").innerHTML='<div class="top"><div><h1>'+esc(U[cur].biz)+'</h1><span class="m">'+esc(U[cur].name)+'</span></div><button class="g s" onclick="out()">Sign out</button></div>'+v+
+  '<nav aria-label="Main">'+t.map(function(x){return '<button onclick="go(\''+x[0]+'\')" aria-current="'+(tab===x[0])+'">'+x[1]+'</button>'}).join("")+'</nav>';
+}
+function go(t){tab=t;sel=null;render();scrollTo(0,0)}
+function out(){cur=null;D=null;sj("kdbm_cur",null);mode="in";render()}
+
+function auth(){
+  var su=mode==="up";
+  $("app").innerHTML='<h1>Kakuma Digital Business Management</h1><p>Record sales, track stock, log expenses and know your profit.</p><div class="card"><h2 style="margin-top:0">'+(su?"Create your account":"Sign in")+'</h2><form id="fa">'+
+  (su?'<label for="n">Your name</label><input id="n" required autocomplete="name"><label for="b">Business name</label><input id="b" required placeholder="e.g. Amani General Shop">':'')+
+  '<label for="e">Email</label><input id="e" type="email" required autocomplete="email"><label for="p">Password (at least 6 characters)</label><input id="p" type="password" minlength="6" required autocomplete="'+(su?"new-password":"current-password")+'">'+
+  '<button class="full" type="submit">'+(su?"Create account":"Sign in")+'</button></form></div><button class="g full" onclick="mode=\''+(su?"in":"up")+'\';render()">'+(su?"I already have an account":"Create a new account")+'</button>';
+  $("fa").onsubmit=function(ev){ev.preventDefault();var e=$("e").value.trim().toLowerCase(),p=$("p").value;
+    if(su){if(U[e]){toast("That email already has an account. Sign in instead.");return}
+      U[e]={name:$("n").value.trim(),biz:$("b").value.trim(),pw:btoa(unescape(encodeURIComponent(p)))};sj("kdbm_users",U)}
+    else if(!U[e]||U[e].pw!==btoa(unescape(encodeURIComponent(p)))){toast("Email or password is wrong. Check and try again.");return}
+    cur=e;sj("kdbm_cur",e);D=null;tab="dash";render();toast(su?"Account created. Add a product, then record your first sale.":"Welcome back")};
+}
+
+function dash(){
+  var ts=sum(D.sales,function(s){return s.total}),te=sum(D.expenses,function(e){return e.amt}),
+  owed=sum(D.sales.filter(function(s){return s.status==="credit"}),function(s){return s.total}),
+  low=D.products.filter(function(p){return p.stock<=p.low});
+  return '<div class="big"><span>Net profit</span><b>'+kes(ts-te)+'</b><span>Sales minus expenses</span></div><div class="grid">'+
+  '<div class="stat"><b>'+kes(ts)+'</b><span>Total sales</span></div><div class="stat"><b>'+kes(te)+'</b><span>Total expenses</span></div>'+
+  '<div class="stat"><b>'+D.products.length+'</b><span>Products</span></div><div class="stat"><b class="'+(owed?"w":"")+'">'+kes(owed)+'</b><span>Unpaid credit</span></div></div>'+
+  '<h2>Low stock</h2><div class="card">'+(low.length?low.map(function(p){return '<div class="it row"><b>'+esc(p.name)+'</b><span class="w">'+p.stock+' left</span></div>'}).join(""):'<p style="margin:0">'+(D.products.length?"All products are above their low-stock level.":"No products yet. Add your first product in Inventory.")+'</p>')+'</div>'+
+  (D.sales.length?'':'<button class="full" onclick="go(\'sales\')">Record your first sale</button>');
+}
+
+function sales(){
+  var op=D.products.map(function(p){return '<option value="'+p.id+'">'+esc(p.name)+' – '+kes(p.price)+' ('+p.stock+' in stock)</option>'}).join("");
+  var oc=D.customers.map(function(c){return '<option value="'+c.id+'">'+esc(c.name)+'</option>'}).join("");
+  var list=D.sales.slice().reverse().slice(0,20).map(function(s){return '<div class="it row"><div><b>'+esc(s.name)+'</b> × '+s.qty+'<div class="m">'+s.date+(s.cid&&cust(s.cid)?' · '+esc(cust(s.cid).name):'')+(s.status==="credit"?' · <span class="w">credit</span>':' · paid')+'</div></div><b>'+kes(s.total)+'</b></div>'}).join("")||'<p style="margin:0">No sales yet.</p>';
+  if(!D.products.length)return '<h2>Record a sale</h2><div class="card"><p>Add at least one product before you can record a sale.</p><button onclick="go(\'inv\')">Add a product</button></div>';
+  return '<h2>Record a sale</h2><div class="card"><form id="fs"><label for="sp">Product</label><select id="sp" required>'+op+'</select>'+
+  '<label for="sq">Quantity</label><input id="sq" type="number" min="1" step="1" value="1" required>'+
+  '<label for="st">Payment</label><select id="st"><option value="paid">Paid now</option><option value="credit">On credit (pay later)</option></select>'+
+  '<label for="sc">Customer (required for credit)</label><select id="sc"><option value="">No customer</option>'+oc+'</select>'+
+  '<button class="full" type="submit">Complete sale</button></form></div><h2>Sales records</h2><div class="card">'+list+'</div>';
+}
+function inv(){return '<h2>Add a product</h2><div class="card"><form id="fp"><label for="pn">Product name</label><input id="pn" required placeholder="e.g. Cooking oil 1L">'+
+  '<label for="pc">Category</label><input id="pc" list="cl" placeholder="e.g. Groceries"><datalist id="cl"><option>Groceries</option><option>Drinks</option><option>Household</option><option>Clothing</option><option>Other</option></datalist>'+
+  '<div class="grid"><div><label for="pp">Price (KSh)</label><input id="pp" type="number" min="1" required></div><div><label for="ps">Stock</label><input id="ps" type="number" min="0" required></div></div>'+
+  '<label for="pl">Warn me when stock is at or below</label><input id="pl" type="number" min="0" value="5" required><button class="full" type="submit">Save product</button></form></div>'+
+  '<h2>Your products</h2><label for="q" class="m" style="margin:0">Search products</label><input id="q" oninput="$(\'il\').innerHTML=invL(this.value)" style="margin-bottom:10px"><div class="card" id="il">'+invL("")+'</div>'}
+function invL(q){q=(q||"").toLowerCase();var a=D.products.filter(function(p){return (p.name+" "+p.category).toLowerCase().indexOf(q)>-1});
+  return a.map(function(p){return '<div class="it"><div class="row"><div><b>'+esc(p.name)+'</b><div class="m">'+esc(p.category||"No category")+' · '+kes(p.price)+'</div></div><b class="'+(p.stock<=p.low?"w":"")+'">'+p.stock+(p.stock<=p.low?" · low":"")+'</b></div>'+
+  '<div class="row" style="margin-top:8px;justify-content:flex-start"><input class="mini" id="r'+p.id+'" type="number" min="1" placeholder="Qty" aria-label="Quantity to add to '+esc(p.name)+'"><button class="s" onclick="restock(\''+p.id+'\')">Restock</button></div></div>'}).join("")||'<p style="margin:0">'+(D.products.length?"No products match your search.":"No products yet.")+'</p>'}
+function restock(id){var n=parseInt($("r"+id).value,10);if(!(n>0)){toast("Enter how many items to add.");return}prod(id).stock+=n;save();render();toast("Stock updated")}
+function exps(){
+  var list=D.expenses.slice().reverse().slice(0,20).map(function(e){return '<div class="it row"><div><b>'+esc(e.desc)+'</b><div class="m">'+e.date+' · '+esc(e.cat)+'</div></div><b>'+kes(e.amt)+'</b></div>'}).join("")||'<p style="margin:0">No expenses yet.</p>';
+  return '<h2>Record an expense</h2><div class="card"><form id="fe"><label for="ed">What did you pay for?</label><input id="ed" required placeholder="e.g. Transport to market">'+
+  '<label for="ec">Category</label><select id="ec"><option>Stock purchase</option><option>Transport</option><option>Rent</option><option>Wages</option><option>Other</option></select>'+
+  '<div class="grid"><div><label for="ea">Amount (KSh)</label><input id="ea" type="number" min="1" required></div><div><label for="edt">Date</label><input id="edt" type="date" value="'+today()+'" required></div></div>'+
+  '<button class="full" type="submit">Save expense</button></form></div><h2>Expense records</h2><div class="card">'+list+'</div>';
+}
+function cus(){
+  var d=sel&&cust(sel),h="";
+  if(d){var hs=D.sales.filter(function(s){return s.cid===d.id}),ow=sum(hs.filter(function(s){return s.status==="credit"}),function(s){return s.total});
+    h='<div class="card"><div class="row"><h2 style="margin:0">'+esc(d.name)+'</h2><button class="g s" onclick="sel=null;render()">Close</button></div>'+
+    '<form id="fc2"><label for="cn2">Name</label><input id="cn2" required value="'+esc(d.name)+'"><label for="cp2">Phone</label><input id="cp2" type="tel" value="'+esc(d.phone)+'"><button class="full" type="submit">Save changes</button></form>'+
+    '<h2>Purchase history</h2>'+(hs.map(function(s){return '<div class="it row"><div>'+esc(s.name)+' × '+s.qty+'<div class="m">'+s.date+(s.status==="credit"?' · <span class="w">unpaid</span>':' · paid')+'</div></div><b>'+kes(s.total)+'</b></div>'}).join("")||'<p>No purchases yet.</p>')+
+    (ow?'<div class="row" style="margin-top:10px"><b class="w">Owes '+kes(ow)+'</b><button class="s" onclick="payAll()">Mark all paid</button></div>':'')+'</div>';}
+  return h+'<h2>Add a customer</h2><div class="card"><form id="fc"><label for="cn">Name</label><input id="cn" required><label for="cp">Phone number</label><input id="cp" type="tel" inputmode="tel" placeholder="07…"><button class="full" type="submit">Save customer</button></form></div>'+
+  '<h2>Your customers</h2><label for="cq" class="m" style="margin:0">Search customers</label><input id="cq" oninput="$(\'cl2\').innerHTML=cusL(this.value)" style="margin-bottom:10px"><div class="card" id="cl2">'+cusL("")+'</div>';
+}
+function cusL(q){q=(q||"").toLowerCase();var a=D.customers.filter(function(c){return (c.name+" "+c.phone).toLowerCase().indexOf(q)>-1});
+  return a.map(function(c){return '<div class="it row"><div><b>'+esc(c.name)+'</b><div class="m">'+esc(c.phone||"No phone")+'</div></div><button class="g s" onclick="sel=\''+c.id+'\';render();scrollTo(0,0)">View</button></div>'}).join("")||'<p style="margin:0">'+(D.customers.length?"No customers match your search.":"No customers yet.")+'</p>'}
+function payAll(){D.sales.forEach(function(s){if(s.cid===sel&&s.status==="credit")s.status="paid"});save();render();toast("Marked as paid")}
+
+document.addEventListener("submit",function(ev){var id=ev.target.id;if(!id||id==="fa")return;ev.preventDefault();
+  if(id==="fs"){var p=prod($("sp").value),q=parseInt($("sq").value,10),st=$("st").value,c=$("sc").value;
+    if(!p||!(q>0)){toast("Choose a product and enter a quantity of 1 or more.");return}
+    if(q>p.stock){toast("Only "+p.stock+" "+p.name+" in stock. Lower the quantity or restock.");return}
+    if(st==="credit"&&!c){toast("Choose a customer for a credit sale.");return}
+    p.stock-=q;D.sales.push({id:uid(),pid:p.id,name:p.name,qty:q,total:q*p.price,status:st,cid:c,date:today()});save();tab="dash";render();toast("Sale saved: "+kes(q*p.price))}
+  if(id==="fp"){var pr=+$("pp").value,sk=parseInt($("ps").value,10);if(!(pr>0)||!(sk>=0)){toast("Enter a price above 0 and a stock of 0 or more.");return}
+    D.products.push({id:uid(),name:$("pn").value.trim(),category:$("pc").value.trim(),price:pr,stock:sk,low:Math.max(0,parseInt($("pl").value,10)||0)});save();render();toast("Product saved")}
+  if(id==="fe"){D.expenses.push({id:uid(),desc:$("ed").value.trim(),cat:$("ec").value,amt:+$("ea").value,date:$("edt").value});save();render();toast("Expense saved")}
+  if(id==="fc"){D.customers.push({id:uid(),name:$("cn").value.trim(),phone:$("cp").value.trim()});save();render();toast("Customer saved")}
+  if(id==="fc2"){var c2=cust(sel);c2.name=$("cn2").value.trim();c2.phone=$("cp2").value.trim();save();render();toast("Customer updated")}
+});
+render();
+</script>
+</body>
+</html>
